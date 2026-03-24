@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  ReferenceArea,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SessionSummary, MetricKey, METRIC_CONFIG } from "@/lib/types";
@@ -39,12 +40,21 @@ export function ProgressionChart({ summaries, metric }: ProgressionChartProps) {
   const values = data.map((d) => d.value).filter((v): v is number => v !== null);
   const avgValue = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 
+  const hasTargetZone = metric === "avgClubPath";
+  let yDomain: [number | string, number | string] = ["auto", "auto"];
+  if (hasTargetZone && values.length > 0) {
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+    yDomain = [Math.min(minVal - 1, -3), Math.max(maxVal + 1, 3)];
+  }
+
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">
           {config.label}
           {config.unit && <span className="text-muted-foreground ml-1">({config.unit})</span>}
+          {hasTargetZone && <span className="text-emerald-600 ml-2 text-[10px] font-normal">Target: -2° to 2°</span>}
         </CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
@@ -60,7 +70,7 @@ export function ProgressionChart({ summaries, metric }: ProgressionChartProps) {
               <YAxis
                 tick={{ fontSize: 11 }}
                 className="text-muted-foreground"
-                domain={["auto", "auto"]}
+                domain={yDomain as [number, number]}
                 tickFormatter={(v) => v.toFixed(config.decimals > 1 ? 1 : 0)}
               />
               <Tooltip
@@ -75,6 +85,20 @@ export function ProgressionChart({ summaries, metric }: ProgressionChartProps) {
                   config.label,
                 ]}
               />
+              {hasTargetZone && (
+                <ReferenceArea
+                  y1={-2}
+                  y2={2}
+                  fill="hsl(152, 60%, 40%)"
+                  fillOpacity={0.1}
+                  stroke="hsl(152, 60%, 40%)"
+                  strokeOpacity={0.3}
+                  strokeDasharray="3 3"
+                />
+              )}
+              {hasTargetZone && (
+                <ReferenceLine y={0} stroke="hsl(152, 60%, 40%)" strokeOpacity={0.4} />
+              )}
               <ReferenceLine
                 y={avgValue}
                 stroke="hsl(var(--muted-foreground))"

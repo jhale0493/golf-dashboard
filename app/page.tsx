@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { CsvUpload } from "@/components/csv-upload";
 import { MetricCards } from "@/components/metric-cards";
 import { ProgressionChart, MultiClubChart } from "@/components/progression-chart";
@@ -23,7 +25,7 @@ import {
   SEED_FILES,
 } from "@/lib/csv-parser";
 import { ShotData, SessionSummary, MetricKey } from "@/lib/types";
-import { Activity, Target, Gauge, Ruler, CalendarDays } from "lucide-react";
+import { Activity, Target, Gauge, Ruler, CalendarDays, Lock, Unlock } from "lucide-react";
 
 const PRIMARY_METRICS: MetricKey[] = [
   "avgClubSpeed",
@@ -32,6 +34,7 @@ const PRIMARY_METRICS: MetricKey[] = [
   "avgCarryDistance",
   "avgTotalDistance",
   "avgCarryDeviation",
+  "avgClubPath",
   "maxClubSpeed",
   "maxCarryDistance",
   "maxTotalDistance",
@@ -46,6 +49,7 @@ const CHART_METRICS: MetricKey[] = [
   "avgSpinRate",
   "avgLaunchAngle",
   "avgAttackAngle",
+  "avgClubPath",
   "avgCarryDeviation",
 ];
 
@@ -60,6 +64,9 @@ export default function Dashboard() {
   const [manualSummaries, setManualSummaries] = useState<SessionSummary[]>([]);
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  const [uploadUnlocked, setUploadUnlocked] = useState(false);
+  const [codeInput, setCodeInput] = useState("");
+  const [codeError, setCodeError] = useState(false);
 
   useEffect(() => {
     async function loadSeedData() {
@@ -249,7 +256,43 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
-        <CsvUpload onDataLoaded={handleUpload} />
+        {!uploadUnlocked ? (
+          <Card className="border-dashed border-2 border-amber-300 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-700">
+            <CardContent className="flex items-center justify-center gap-3 py-4">
+              <Lock className="h-5 w-5 text-amber-600" />
+              <span className="text-sm text-muted-foreground">Upload locked — enter code to unlock</span>
+              <input
+                type="password"
+                value={codeInput}
+                onChange={(e) => { setCodeInput(e.target.value); setCodeError(false); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    if (codeInput === "0623") setUploadUnlocked(true);
+                    else setCodeError(true);
+                  }
+                }}
+                placeholder="Code"
+                className={`h-8 w-24 rounded-md border bg-background px-2 text-xs text-center outline-none focus:ring-1 focus:ring-ring ${
+                  codeError ? "border-red-400 ring-1 ring-red-400" : "border-input"
+                }`}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-400 text-amber-700 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900"
+                onClick={() => {
+                  if (codeInput === "0623") setUploadUnlocked(true);
+                  else setCodeError(true);
+                }}
+              >
+                <Unlock className="h-3.5 w-3.5 mr-1" />
+                Unlock
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <CsvUpload onDataLoaded={handleUpload} />
+        )}
 
         <MetricCards summaries={summaries} selectedMetrics={PRIMARY_METRICS} />
 
@@ -277,7 +320,7 @@ export default function Dashboard() {
                 />
               ))}
             </div>
-            <ShotDispersion shots={filteredShots} />
+            <ShotDispersion shots={filteredShots} clubs={clubs} />
           </>
         ) : (
           <>

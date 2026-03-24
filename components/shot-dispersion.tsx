@@ -13,11 +13,30 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShotData } from "@/lib/types";
 
+const CLUB_COLORS = [
+  "hsl(152, 60%, 40%)",
+  "hsl(200, 70%, 50%)",
+  "hsl(30, 80%, 55%)",
+  "hsl(280, 60%, 55%)",
+  "hsl(350, 65%, 55%)",
+  "hsl(170, 55%, 45%)",
+  "hsl(45, 85%, 50%)",
+  "hsl(320, 60%, 50%)",
+  "hsl(100, 50%, 45%)",
+  "hsl(220, 65%, 55%)",
+];
+
 interface ShotDispersionProps {
   shots: ShotData[];
+  clubs: string[];
 }
 
-export function ShotDispersion({ shots }: ShotDispersionProps) {
+export function ShotDispersion({ shots, clubs }: ShotDispersionProps) {
+  const clubColorMap = new Map<string, string>();
+  clubs.forEach((club, i) => {
+    clubColorMap.set(club, CLUB_COLORS[i % CLUB_COLORS.length]);
+  });
+
   const data = shots
     .filter((s) => s.carryDistance !== null && s.carryDeviationDistance !== null)
     .map((s) => ({
@@ -28,6 +47,8 @@ export function ShotDispersion({ shots }: ShotDispersionProps) {
     }));
 
   if (data.length === 0) return null;
+
+  const usedClubs = [...new Set(data.map((d) => d.club))];
 
   return (
     <Card>
@@ -62,15 +83,41 @@ export function ShotDispersion({ shots }: ShotDispersionProps) {
                   borderRadius: "8px",
                   fontSize: "12px",
                 }}
-                formatter={(value: number, name: string) => [`${value.toFixed(1)} yds`, name]}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const d = payload[0].payload;
+                  return (
+                    <div className="rounded-lg border bg-card px-3 py-2 text-xs shadow-md">
+                      <div className="font-medium">{d.club}</div>
+                      <div className="text-muted-foreground">{d.date}</div>
+                      <div>Carry: {d.y.toFixed(1)} yds</div>
+                      <div>Deviation: {d.x.toFixed(1)} yds</div>
+                    </div>
+                  );
+                }}
               />
-              <Scatter data={data} fill="hsl(152, 60%, 40%)">
-                {data.map((_, i) => (
-                  <Cell key={i} fillOpacity={0.6} />
+              <Scatter data={data}>
+                {data.map((d, i) => (
+                  <Cell
+                    key={i}
+                    fill={clubColorMap.get(d.club) || CLUB_COLORS[0]}
+                    fillOpacity={0.7}
+                  />
                 ))}
               </Scatter>
             </ScatterChart>
           </ResponsiveContainer>
+        </div>
+        <div className="flex flex-wrap gap-3 mt-3 justify-center">
+          {usedClubs.map((club) => (
+            <div key={club} className="flex items-center gap-1.5 text-xs">
+              <div
+                className="w-2.5 h-2.5 rounded-full"
+                style={{ backgroundColor: clubColorMap.get(club) || CLUB_COLORS[0] }}
+              />
+              {club}
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>
