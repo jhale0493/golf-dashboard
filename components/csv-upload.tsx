@@ -8,7 +8,7 @@ import { parseCsvText } from "@/lib/csv-parser";
 import type { ShotData } from "@/lib/types";
 
 interface CsvUploadProps {
-  onDataLoaded: (shots: ShotData[], fileName: string) => void;
+  onDataLoaded: (shots: ShotData[], fileName: string, rawCsv?: string) => void;
 }
 
 export function CsvUpload({ onDataLoaded }: CsvUploadProps) {
@@ -23,7 +23,7 @@ export function CsvUpload({ onDataLoaded }: CsvUploadProps) {
           const text = e.target?.result as string;
           const shots = parseCsvText(text);
           if (shots.length > 0) {
-            onDataLoaded(shots, file.name);
+            onDataLoaded(shots, file.name, text);
           }
         };
         reader.readAsText(file);

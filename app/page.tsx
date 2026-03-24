@@ -68,6 +68,30 @@ export default function Dashboard() {
   const [codeInput, setCodeInput] = useState("");
   const [codeError, setCodeError] = useState(false);
 
+  const STORAGE_KEY = "golf-dashboard-uploads";
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const entries: { name: string; csv: string }[] = JSON.parse(stored);
+        const restored: ShotData[] = [];
+        const names: string[] = [];
+        for (const entry of entries) {
+          const shots = parseCsvText(entry.csv);
+          if (shots.length > 0) {
+            restored.push(...shots);
+            names.push(entry.name);
+          }
+        }
+        if (restored.length > 0) {
+          setAllShots((prev) => [...prev, ...restored]);
+          setUploadedFiles(names);
+        }
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     async function loadSeedData() {
       const shots: ShotData[] = [];
@@ -139,9 +163,20 @@ export default function Dashboard() {
   );
 
   const handleUpload = useCallback(
-    (shots: ShotData[], fileName: string) => {
+    (shots: ShotData[], fileName: string, rawCsv?: string) => {
       setAllShots((prev) => [...prev, ...shots]);
-      setUploadedFiles((prev) => [...prev, fileName]);
+      setUploadedFiles((prev) => {
+        const next = [...prev, fileName];
+        return next;
+      });
+      if (rawCsv) {
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          const entries: { name: string; csv: string }[] = stored ? JSON.parse(stored) : [];
+          entries.push({ name: fileName, csv: rawCsv });
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+        } catch {}
+      }
     },
     []
   );

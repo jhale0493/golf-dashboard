@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import {
   ScatterChart,
   Scatter,
@@ -32,30 +33,102 @@ interface ShotDispersionProps {
 }
 
 export function ShotDispersion({ shots, clubs }: ShotDispersionProps) {
+  const [activeClubs, setActiveClubs] = useState<Set<string> | null>(null);
+
   const clubColorMap = new Map<string, string>();
   clubs.forEach((club, i) => {
     clubColorMap.set(club, CLUB_COLORS[i % CLUB_COLORS.length]);
   });
 
-  const data = shots
-    .filter((s) => s.carryDistance !== null && s.carryDeviationDistance !== null)
-    .map((s) => ({
-      x: s.carryDeviationDistance!,
-      y: s.carryDistance!,
-      club: s.clubType,
-      date: s.sessionDate,
-    }));
+  const allData = useMemo(
+    () =>
+      shots
+        .filter((s) => s.carryDistance !== null && s.carryDeviationDistance !== null)
+        .map((s) => ({
+          x: s.carryDeviationDistance!,
+          y: s.carryDistance!,
+          club: s.clubType,
+          date: s.sessionDate,
+        })),
+    [shots]
+  );
 
-  if (data.length === 0) return null;
+  const usedClubs = useMemo(() => [...new Set(allData.map((d) => d.club))], [allData]);
 
-  const usedClubs = [...new Set(data.map((d) => d.club))];
+  const visibleClubs = useMemo(() => activeClubs ?? new Set(usedClubs), [activeClubs, usedClubs]);
+
+  const data = useMemo(
+    () => allData.filter((d) => visibleClubs.has(d.club)),
+    [allData, visibleClubs]
+  );
+
+  if (allData.length === 0) return null;
+
+  const toggleClub = (club: string) => {
+    setActiveClubs((prev) => {
+      const current = prev ?? new Set(usedClubs);
+      const next = new Set(current);
+      if (next.has(club)) {
+        next.delete(club);
+        if (next.size === 0) return new Set(usedClubs);
+      } else {
+        next.add(club);
+      }
+      if (next.size === usedClubs.length) return null;
+      return next;
+    });
+  };
+
+  const selectOnly = (club: string) => {
+    setActiveClubs((prev) => {
+      const current = prev ?? new Set(usedClubs);
+      if (current.size === 1 && current.has(club)) return null;
+      return new Set([club]);
+    });
+  };
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Shot Dispersion</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium">Shot Dispersion</CardTitle>
+          {activeClubs && (
+            <button
+              onClick={() => setActiveClubs(null)}
+              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Show All
+            </button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="pb-4">
+        <div className="flex flex-wrap gap-2 mb-3 justify-center">
+          {usedClubs.map((club) => {
+            const isActive = visibleClubs.has(club);
+            const color = clubColorMap.get(club) || CLUB_COLORS[0];
+            return (
+              <button
+                key={club}
+                onClick={() => toggleClub(club)}
+                onDoubleClick={() => selectOnly(club)}
+                className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border transition-all ${
+                  isActive
+                    ? "border-current opacity-100"
+                    : "border-transparent opacity-30"
+                }`}
+                style={{ color }}
+                title={`Click to toggle, double-click to isolate`}
+              >
+                <div
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+                {club}
+              </button>
+            );
+          })}
+        </div>
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -107,17 +180,6 @@ export function ShotDispersion({ shots, clubs }: ShotDispersionProps) {
               </Scatter>
             </ScatterChart>
           </ResponsiveContainer>
-        </div>
-        <div className="flex flex-wrap gap-3 mt-3 justify-center">
-          {usedClubs.map((club) => (
-            <div key={club} className="flex items-center gap-1.5 text-xs">
-              <div
-                className="w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: clubColorMap.get(club) || CLUB_COLORS[0] }}
-              />
-              {club}
-            </div>
-          ))}
         </div>
       </CardContent>
     </Card>
