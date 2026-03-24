@@ -71,29 +71,7 @@ export default function Dashboard() {
   const STORAGE_KEY = "golf-dashboard-uploads";
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const entries: { name: string; csv: string }[] = JSON.parse(stored);
-        const restored: ShotData[] = [];
-        const names: string[] = [];
-        for (const entry of entries) {
-          const shots = parseCsvText(entry.csv);
-          if (shots.length > 0) {
-            restored.push(...shots);
-            names.push(entry.name);
-          }
-        }
-        if (restored.length > 0) {
-          setAllShots((prev) => [...prev, ...restored]);
-          setUploadedFiles(names);
-        }
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    async function loadSeedData() {
+    async function loadAllData() {
       const shots: ShotData[] = [];
       for (const file of SEED_FILES) {
         try {
@@ -102,14 +80,27 @@ export default function Dashboard() {
             const text = await res.text();
             shots.push(...parseCsvText(text));
           }
-        } catch {
-          // skip failed files
-        }
+        } catch {}
       }
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const entries: { name: string; csv: string }[] = JSON.parse(stored);
+          const names: string[] = [];
+          for (const entry of entries) {
+            const restored = parseCsvText(entry.csv);
+            if (restored.length > 0) {
+              shots.push(...restored);
+              names.push(entry.name);
+            }
+          }
+          if (names.length > 0) setUploadedFiles(names);
+        }
+      } catch {}
       setAllShots(shots);
       setLoading(false);
     }
-    loadSeedData();
+    loadAllData();
   }, []);
 
   const clubs = useMemo(() => getUniqueClubs(allShots), [allShots]);
