@@ -39,6 +39,7 @@ interface SessionTableProps {
   csvSummaryCount: number;
   onAddSummary: (summary: SessionSummary) => void;
   onRemoveSummary: (index: number, isManual: boolean) => void;
+  onRemoveCsvSummary: (sessionDate: string, clubType: string) => void;
 }
 
 function emptySummary(): SessionSummary {
@@ -64,11 +65,14 @@ function emptySummary(): SessionSummary {
   };
 }
 
-export function SessionTable({ summaries, csvSummaryCount, onAddSummary, onRemoveSummary }: SessionTableProps) {
+export function SessionTable({ summaries, csvSummaryCount, onAddSummary, onRemoveSummary, onRemoveCsvSummary }: SessionTableProps) {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [showAddRow, setShowAddRow] = useState(false);
   const [newRow, setNewRow] = useState<SessionSummary>(emptySummary);
+  const [deleteTarget, setDeleteTarget] = useState<{ index: number; isManual: boolean; sessionDate: string; clubType: string } | null>(null);
+  const [deleteCode, setDeleteCode] = useState("");
+  const [deleteCodeError, setDeleteCodeError] = useState(false);
 
   const handleSort = useCallback((key: SortKey) => {
     if (sortKey === key) {
@@ -113,6 +117,28 @@ export function SessionTable({ summaries, csvSummaryCount, onAddSummary, onRemov
     });
   }, []);
 
+  const confirmDelete = () => {
+    if (deleteCode !== "0623") {
+      setDeleteCodeError(true);
+      return;
+    }
+    if (!deleteTarget) return;
+    if (deleteTarget.isManual) {
+      onRemoveSummary(deleteTarget.index, true);
+    } else {
+      onRemoveCsvSummary(deleteTarget.sessionDate, deleteTarget.clubType);
+    }
+    setDeleteTarget(null);
+    setDeleteCode("");
+    setDeleteCodeError(false);
+  };
+
+  const cancelDelete = () => {
+    setDeleteTarget(null);
+    setDeleteCode("");
+    setDeleteCodeError(false);
+  };
+
   if (summaries.length === 0 && !showAddRow) {
     return (
       <Card>
@@ -141,6 +167,30 @@ export function SessionTable({ summaries, csvSummaryCount, onAddSummary, onRemov
         </Button>
       </CardHeader>
       <CardContent className="pb-4">
+        {deleteTarget && (
+          <div className="mb-3 flex items-center gap-2 rounded-md border border-red-200 bg-red-50/50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2">
+            <span className="text-xs text-red-700 dark:text-red-400">
+              Delete <span className="font-medium">{deleteTarget.clubType}</span> — {deleteTarget.sessionDate}? Enter code:
+            </span>
+            <input
+              type="password"
+              value={deleteCode}
+              onChange={(e) => { setDeleteCode(e.target.value); setDeleteCodeError(false); }}
+              onKeyDown={(e) => { if (e.key === "Enter") confirmDelete(); if (e.key === "Escape") cancelDelete(); }}
+              placeholder="Code"
+              autoFocus
+              className={`h-7 w-20 rounded-md border bg-background px-2 text-xs text-center outline-none focus:ring-1 focus:ring-ring ${
+                deleteCodeError ? "border-red-400 ring-1 ring-red-400" : "border-input"
+              }`}
+            />
+            <Button variant="outline" size="sm" className="h-7 text-xs border-red-300 text-red-700 hover:bg-red-100 dark:text-red-400" onClick={confirmDelete}>
+              Confirm
+            </Button>
+            <button onClick={cancelDelete} className="text-xs text-muted-foreground hover:text-foreground px-1">
+              ×
+            </button>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -226,16 +276,21 @@ export function SessionTable({ summaries, csvSummaryCount, onAddSummary, onRemov
                     <td className="text-right py-2 pr-4 tabular-nums">{s.avgSpinRate?.toFixed(0) ?? "—"}</td>
                     <td className="text-right py-2 pr-4 tabular-nums">{s.avgCarryDeviation?.toFixed(1) ?? "—"}</td>
                     <td className="py-2 pl-1 w-8">
-                      {isManual && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50 transition-opacity"
-                          onClick={() => onRemoveSummary(manualIndex, true)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 hover:bg-red-50 transition-opacity"
+                        onClick={() =>
+                          setDeleteTarget({
+                            index: isManual ? manualIndex : originalIndex,
+                            isManual,
+                            sessionDate: s.sessionDate,
+                            clubType: s.clubType,
+                          })
+                        }
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
                     </td>
                   </tr>
                 );

@@ -182,6 +182,10 @@ export default function Dashboard() {
     }
   }, []);
 
+  const handleRemoveCsvSummary = useCallback((sessionDate: string, clubType: string) => {
+    setAllShots((prev) => prev.filter((s) => !(s.sessionDate === sessionDate && s.clubType === clubType)));
+  }, []);
+
   const totalSessions = useMemo(() => {
     const dates = new Set(allShots.map((s) => s.sessionDate));
     return dates.size;
@@ -376,6 +380,7 @@ export default function Dashboard() {
           csvSummaryCount={csvSummaries.length}
           onAddSummary={handleAddSummary}
           onRemoveSummary={handleRemoveSummary}
+          onRemoveCsvSummary={handleRemoveCsvSummary}
         />
       </main>
     </div>
