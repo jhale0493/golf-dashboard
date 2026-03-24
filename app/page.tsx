@@ -22,7 +22,6 @@ import {
   parseCsvText,
   computeSessionSummaries,
   getUniqueClubs,
-  SEED_FILES,
 } from "@/lib/csv-parser";
 import { ShotData, SessionSummary, MetricKey } from "@/lib/types";
 import { Activity, Target, Gauge, Ruler, CalendarDays, Lock, Unlock } from "lucide-react";
@@ -73,7 +72,15 @@ export default function Dashboard() {
   useEffect(() => {
     async function loadAllData() {
       const shots: ShotData[] = [];
-      for (const file of SEED_FILES) {
+      let seedFiles: string[] = [];
+      try {
+        const manifestRes = await fetch("/data/manifest.json");
+        if (manifestRes.ok) {
+          const manifest = await manifestRes.json();
+          seedFiles = manifest.files ?? [];
+        }
+      } catch {}
+      for (const file of seedFiles) {
         try {
           const res = await fetch(`/data/${encodeURIComponent(file)}`);
           if (res.ok) {

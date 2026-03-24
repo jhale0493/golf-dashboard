@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Upload, Loader2 } from "lucide-react";
 import { parseCsvText } from "@/lib/csv-parser";
 import type { ShotData } from "@/lib/types";
 
@@ -13,17 +13,28 @@ interface CsvUploadProps {
 
 export function CsvUpload({ onDataLoaded }: CsvUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const handleFiles = useCallback(
     (files: FileList | null) => {
       if (!files) return;
       Array.from(files).forEach((file) => {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
           const text = e.target?.result as string;
           const shots = parseCsvText(text);
           if (shots.length > 0) {
             onDataLoaded(shots, file.name, text);
+            setSyncing(true);
+            try {
+              await fetch("/api/upload", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fileName: file.name, csvContent: text }),
+              });
+            } catch {} finally {
+              setSyncing(false);
+            }
           }
         };
         reader.readAsText(file);
@@ -42,8 +53,16 @@ export function CsvUpload({ onDataLoaded }: CsvUploadProps) {
           size="sm"
           className="border-emerald-400 text-emerald-700 hover:bg-emerald-100 dark:text-emerald-400 dark:hover:bg-emerald-900"
           onClick={() => inputRef.current?.click()}
+          disabled={syncing}
         >
-          Choose Files
+          {syncing ? (
+            <>
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              Syncing…
+            </>
+          ) : (
+            "Choose Files"
+          )}
         </Button>
         <input
           ref={inputRef}
