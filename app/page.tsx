@@ -67,6 +67,7 @@ export default function Dashboard() {
   const [codeError, setCodeError] = useState(false);
 
   const STORAGE_KEY = "golf-dashboard-uploads";
+  const DELETED_KEY = "golf-dashboard-deleted";
 
   useEffect(() => {
     async function loadAllData() {
@@ -79,12 +80,18 @@ export default function Dashboard() {
           seedFiles = manifest.files ?? [];
         }
       } catch {}
+      let deletedSet = new Set<string>();
+      try {
+        const deletedRaw = localStorage.getItem(DELETED_KEY);
+        if (deletedRaw) deletedSet = new Set(JSON.parse(deletedRaw));
+      } catch {}
       for (const file of seedFiles) {
         try {
           const res = await fetch(`/data/${encodeURIComponent(file)}`);
           if (res.ok) {
             const text = await res.text();
-            shots.push(...parseCsvText(text));
+            const parsed = parseCsvText(text);
+            shots.push(...parsed.filter((s) => !deletedSet.has(`${s.sessionDate}||${s.clubType}`)));
           }
         } catch {}
       }
@@ -198,6 +205,12 @@ export default function Dashboard() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
           }
         }
+      } catch {}
+      try {
+        const deletedRaw = localStorage.getItem(DELETED_KEY);
+        const deleted: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
+        deleted.push(`${sessionDate}||${clubType}`);
+        localStorage.setItem(DELETED_KEY, JSON.stringify(deleted));
       } catch {}
       return remaining;
     });
