@@ -59,7 +59,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedClub, setSelectedClub] = useState<string>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("single");
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [manualSummaries, setManualSummaries] = useState<SessionSummary[]>([]);
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
@@ -93,15 +92,12 @@ export default function Dashboard() {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const entries: { name: string; csv: string }[] = JSON.parse(stored);
-          const names: string[] = [];
           for (const entry of entries) {
             const restored = parseCsvText(entry.csv);
             if (restored.length > 0) {
               shots.push(...restored);
-              names.push(entry.name);
             }
           }
-          if (names.length > 0) setUploadedFiles(names);
         }
       } catch {}
       setAllShots(shots);
@@ -163,10 +159,6 @@ export default function Dashboard() {
   const handleUpload = useCallback(
     (shots: ShotData[], fileName: string, rawCsv?: string) => {
       setAllShots((prev) => [...prev, ...shots]);
-      setUploadedFiles((prev) => {
-        const next = [...prev, fileName];
-        return next;
-      });
       if (rawCsv) {
         try {
           const stored = localStorage.getItem(STORAGE_KEY);
@@ -190,7 +182,25 @@ export default function Dashboard() {
   }, []);
 
   const handleRemoveCsvSummary = useCallback((sessionDate: string, clubType: string) => {
-    setAllShots((prev) => prev.filter((s) => !(s.sessionDate === sessionDate && s.clubType === clubType)));
+    setAllShots((prev) => {
+      const remaining = prev.filter((s) => !(s.sessionDate === sessionDate && s.clubType === clubType));
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const entries: { name: string; csv: string }[] = JSON.parse(stored);
+          const updated = entries.filter((entry) => {
+            const shots = parseCsvText(entry.csv);
+            return !shots.some((s) => s.sessionDate === sessionDate && s.clubType === clubType);
+          });
+          if (updated.length === 0) {
+            localStorage.removeItem(STORAGE_KEY);
+          } else {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          }
+        }
+      } catch {}
+      return remaining;
+    });
   }, []);
 
   const totalSessions = useMemo(() => {
@@ -219,22 +229,13 @@ export default function Dashboard() {
                 <Target className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold tracking-tight">Swing Tracker</h1>
+                <h1 className="text-lg font-semibold tracking-tight">Joseph&apos;s Swing Tracker</h1>
                 <p className="text-xs text-muted-foreground">
                   {totalSessions} sessions &middot; {allShots.length} shots
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {uploadedFiles.length > 0 && (
-                <div className="flex items-center gap-1">
-                  {uploadedFiles.map((f, i) => (
-                    <Badge key={i} variant="secondary" className="text-[10px]">
-                      {f}
-                    </Badge>
-                  ))}
-                </div>
-              )}
               <div className="flex items-center gap-1.5">
                 <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
                 <input
