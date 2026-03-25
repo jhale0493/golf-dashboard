@@ -91,7 +91,7 @@ export default function Dashboard() {
           if (res.ok) {
             const text = await res.text();
             const parsed = parseCsvText(text);
-            shots.push(...parsed.filter((s) => !deletedSet.has(`${s.sessionDate}||${s.clubType}`)));
+            shots.push(...parsed.filter((s) => !deletedSet.has(s.sessionDate)));
           }
         } catch {}
       }
@@ -188,16 +188,16 @@ export default function Dashboard() {
     }
   }, []);
 
-  const handleRemoveCsvSummary = useCallback((sessionDate: string, clubType: string) => {
+  const handleRemoveCsvSummary = useCallback((sessionDate: string) => {
     setAllShots((prev) => {
-      const remaining = prev.filter((s) => !(s.sessionDate === sessionDate && s.clubType === clubType));
+      const remaining = prev.filter((s) => s.sessionDate !== sessionDate);
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const entries: { name: string; csv: string }[] = JSON.parse(stored);
           const updated = entries.filter((entry) => {
             const shots = parseCsvText(entry.csv);
-            return !shots.some((s) => s.sessionDate === sessionDate && s.clubType === clubType);
+            return !shots.some((s) => s.sessionDate === sessionDate);
           });
           if (updated.length === 0) {
             localStorage.removeItem(STORAGE_KEY);
@@ -209,7 +209,7 @@ export default function Dashboard() {
       try {
         const deletedRaw = localStorage.getItem(DELETED_KEY);
         const deleted: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
-        deleted.push(`${sessionDate}||${clubType}`);
+        deleted.push(sessionDate);
         localStorage.setItem(DELETED_KEY, JSON.stringify(deleted));
       } catch {}
       return remaining;

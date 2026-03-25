@@ -39,7 +39,7 @@ interface SessionTableProps {
   csvSummaryCount: number;
   onAddSummary: (summary: SessionSummary) => void;
   onRemoveSummary: (index: number, isManual: boolean) => void;
-  onRemoveCsvSummary: (sessionDate: string, clubType: string) => void;
+  onRemoveCsvSummary: (sessionDate: string) => void;
 }
 
 function emptySummary(): SessionSummary {
@@ -126,7 +126,7 @@ export function SessionTable({ summaries, csvSummaryCount, onAddSummary, onRemov
     if (deleteTarget.isManual) {
       onRemoveSummary(deleteTarget.index, true);
     } else {
-      onRemoveCsvSummary(deleteTarget.sessionDate, deleteTarget.clubType);
+      onRemoveCsvSummary(deleteTarget.sessionDate);
     }
     setDeleteTarget(null);
     setDeleteCode("");
@@ -170,7 +170,7 @@ export function SessionTable({ summaries, csvSummaryCount, onAddSummary, onRemov
         {deleteTarget && (
           <div className="mb-3 flex items-center gap-2 rounded-md border border-red-200 bg-red-50/50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2">
             <span className="text-xs text-red-700 dark:text-red-400">
-              Delete <span className="font-medium">{deleteTarget.clubType}</span> — {deleteTarget.sessionDate}? Enter code:
+              Delete session <span className="font-medium">{deleteTarget.sessionDate}</span>? Enter code:
             </span>
             <input
               type="password"
