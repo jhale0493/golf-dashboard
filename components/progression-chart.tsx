@@ -40,12 +40,22 @@ export function ProgressionChart({ summaries, metric }: ProgressionChartProps) {
   const values = data.map((d) => d.value).filter((v): v is number => v !== null);
   const avgValue = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 
-  const hasTargetZone = metric === "avgClubPath";
+  const TARGET_ZONES: Record<string, { y1: number; y2: number; label: string } | { y1: number; label: string }> = {
+    avgClubPath: { y1: -2, y2: 2, label: "-2° to 2°" },
+    avgLaunchAngle: { y1: 12, y2: 15, label: "12° to 15°" },
+    avgAttackAngle: { y1: 3, y2: 5, label: "3° to 5°" },
+    avgSmashFactor: { y1: 1.5, label: "1.50" },
+  };
+
+  const target = TARGET_ZONES[metric];
+  const isRange = target && "y2" in target;
   let yDomain: [number | string, number | string] = ["auto", "auto"];
-  if (hasTargetZone && values.length > 0) {
+  if (target && values.length > 0) {
     const minVal = Math.min(...values);
     const maxVal = Math.max(...values);
-    yDomain = [Math.min(minVal - 1, -3), Math.max(maxVal + 1, 3)];
+    const tLow = target.y1;
+    const tHigh = isRange ? (target as { y1: number; y2: number }).y2 : target.y1;
+    yDomain = [Math.min(minVal - 1, tLow - 1), Math.max(maxVal + 1, tHigh + 1)];
   }
 
   return (
@@ -54,7 +64,7 @@ export function ProgressionChart({ summaries, metric }: ProgressionChartProps) {
         <CardTitle className="text-sm font-medium">
           {config.label}
           {config.unit && <span className="text-muted-foreground ml-1">({config.unit})</span>}
-          {hasTargetZone && <span className="text-emerald-600 ml-2 text-[10px] font-normal">Target: -2° to 2°</span>}
+          {target && <span className="text-emerald-600 ml-2 text-[10px] font-normal">Target: {target.label}</span>}
         </CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
@@ -85,10 +95,10 @@ export function ProgressionChart({ summaries, metric }: ProgressionChartProps) {
                   config.label,
                 ]}
               />
-              {hasTargetZone && (
+              {target && isRange && (
                 <ReferenceArea
-                  y1={-2}
-                  y2={2}
+                  y1={target.y1}
+                  y2={(target as { y1: number; y2: number }).y2}
                   fill="hsl(152, 60%, 40%)"
                   fillOpacity={0.1}
                   stroke="hsl(152, 60%, 40%)"
@@ -96,7 +106,16 @@ export function ProgressionChart({ summaries, metric }: ProgressionChartProps) {
                   strokeDasharray="3 3"
                 />
               )}
-              {hasTargetZone && (
+              {target && !isRange && (
+                <ReferenceLine
+                  y={target.y1}
+                  stroke="hsl(152, 60%, 40%)"
+                  strokeDasharray="6 3"
+                  strokeOpacity={0.6}
+                  label={{ value: target.label, position: "right", fontSize: 10, fill: "hsl(152, 60%, 40%)" }}
+                />
+              )}
+              {target && isRange && metric === "avgClubPath" && (
                 <ReferenceLine y={0} stroke="hsl(152, 60%, 40%)" strokeOpacity={0.4} />
               )}
               <ReferenceLine
