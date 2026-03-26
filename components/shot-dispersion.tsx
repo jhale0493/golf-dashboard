@@ -12,6 +12,7 @@ import {
   Cell,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Slider } from "@/components/ui/slider";
 import { ShotData } from "@/lib/types";
 
 const CLUB_COLORS = [
@@ -27,6 +28,8 @@ const CLUB_COLORS = [
   "hsl(220, 65%, 55%)",
 ];
 
+const GRAY = "hsl(0, 0%, 75%)";
+
 interface ShotDispersionProps {
   shots: ShotData[];
   clubs: string[];
@@ -34,6 +37,7 @@ interface ShotDispersionProps {
 
 export function ShotDispersion({ shots, clubs }: ShotDispersionProps) {
   const [activeClubs, setActiveClubs] = useState<Set<string> | null>(null);
+  const [selectedSessionIdx, setSelectedSessionIdx] = useState<number | null>(null);
 
   const clubColorMap = new Map<string, string>();
   clubs.forEach((club, i) => {
@@ -53,6 +57,12 @@ export function ShotDispersion({ shots, clubs }: ShotDispersionProps) {
     [shots]
   );
 
+  const sessions = useMemo(() => {
+    const unique = [...new Set(allData.map((d) => d.date))];
+    unique.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    return unique;
+  }, [allData]);
+
   const usedClubs = useMemo(() => [...new Set(allData.map((d) => d.club))], [allData]);
 
   const visibleClubs = useMemo(() => activeClubs ?? new Set(usedClubs), [activeClubs, usedClubs]);
@@ -61,6 +71,8 @@ export function ShotDispersion({ shots, clubs }: ShotDispersionProps) {
     () => allData.filter((d) => visibleClubs.has(d.club)),
     [allData, visibleClubs]
   );
+
+  const activeSession = selectedSessionIdx !== null ? sessions[selectedSessionIdx] : null;
 
   if (allData.length === 0) return null;
 
@@ -92,14 +104,19 @@ export function ShotDispersion({ shots, clubs }: ShotDispersionProps) {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium">Shot Dispersion</CardTitle>
-          {activeClubs && (
-            <button
-              onClick={() => setActiveClubs(null)}
-              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Show All
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {activeSession && (
+              <span className="text-[10px] font-medium text-foreground">{activeSession}</span>
+            )}
+            {(activeClubs || activeSession) && (
+              <button
+                onClick={() => { setActiveClubs(null); setSelectedSessionIdx(null); }}
+                className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Reset
+              </button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pb-4">
@@ -129,6 +146,25 @@ export function ShotDispersion({ shots, clubs }: ShotDispersionProps) {
             );
           })}
         </div>
+        {sessions.length > 1 && (
+          <div className="mb-3 px-2">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-muted-foreground">
+                {sessions[0]}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                {sessions[sessions.length - 1]}
+              </span>
+            </div>
+            <Slider
+              min={0}
+              max={sessions.length - 1}
+              step={1}
+              value={selectedSessionIdx !== null ? [selectedSessionIdx] : [sessions.length - 1]}
+              onValueChange={(val) => { const v = Array.isArray(val) ? val[0] : val; setSelectedSessionIdx(v); }}
+            />
+          </div>
+        )}
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -170,13 +206,16 @@ export function ShotDispersion({ shots, clubs }: ShotDispersionProps) {
                 }}
               />
               <Scatter data={data}>
-                {data.map((d, i) => (
-                  <Cell
-                    key={i}
-                    fill={clubColorMap.get(d.club) || CLUB_COLORS[0]}
-                    fillOpacity={0.7}
-                  />
-                ))}
+                {data.map((d, i) => {
+                  const isHighlighted = !activeSession || d.date === activeSession;
+                  return (
+                    <Cell
+                      key={i}
+                      fill={isHighlighted ? (clubColorMap.get(d.club) || CLUB_COLORS[0]) : GRAY}
+                      fillOpacity={isHighlighted ? 0.7 : 0.25}
+                    />
+                  );
+                })}
               </Scatter>
             </ScatterChart>
           </ResponsiveContainer>
