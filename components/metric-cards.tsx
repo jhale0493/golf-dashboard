@@ -3,11 +3,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SessionSummary, MetricKey, METRIC_CONFIG } from "@/lib/types";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Trophy } from "lucide-react";
 
 interface MetricCardsProps {
   summaries: SessionSummary[];
   selectedMetrics: MetricKey[];
+  bestSessions?: Record<string, { value: number; sessionDate: string; clubType: string }>;
 }
 
 function getTrend(summaries: SessionSummary[], metric: MetricKey): { delta: number | null; direction: "up" | "down" | "flat" } {
@@ -20,18 +21,21 @@ function getTrend(summaries: SessionSummary[], metric: MetricKey): { delta: numb
   return { delta, direction: delta > 0 ? "up" : "down" };
 }
 
-function getLatestValue(summaries: SessionSummary[], metric: MetricKey): number | null {
-  if (summaries.length === 0) return null;
-  return summaries[summaries.length - 1][metric] as number | null;
+function getOverallValue(summaries: SessionSummary[], metric: MetricKey): number | null {
+  const vals = summaries.map((s) => s[metric] as number | null).filter((v): v is number => v !== null);
+  if (vals.length === 0) return null;
+  if (metric.startsWith("max")) return Math.max(...vals);
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
-export function MetricCards({ summaries, selectedMetrics }: MetricCardsProps) {
+export function MetricCards({ summaries, selectedMetrics, bestSessions }: MetricCardsProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
       {selectedMetrics.map((metric) => {
         const config = METRIC_CONFIG[metric];
-        const value = getLatestValue(summaries, metric);
+        const value = getOverallValue(summaries, metric);
         const trend = getTrend(summaries, metric);
+        const isBest = bestSessions && bestSessions[metric];
         const isGood =
           trend.direction === "flat"
             ? null
@@ -42,7 +46,12 @@ export function MetricCards({ summaries, selectedMetrics }: MetricCardsProps) {
                 : null;
 
         return (
-          <Card key={metric} className="relative overflow-hidden">
+          <Card key={metric} className={`relative overflow-hidden ${isBest ? "ring-1 ring-amber-400/50" : ""}`}>
+            {isBest && (
+              <div className="absolute top-2 right-2">
+                <Trophy className="h-3.5 w-3.5 text-amber-500" />
+              </div>
+            )}
             <CardHeader className="pb-1 pt-3 px-4">
               <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 {config.label}
@@ -51,7 +60,7 @@ export function MetricCards({ summaries, selectedMetrics }: MetricCardsProps) {
             <CardContent className="px-4 pb-3">
               <div className="flex items-end gap-2">
                 <span className="text-2xl font-bold tabular-nums">
-                  {value !== null ? value.toFixed(config.decimals) : "—"}
+                  {value !== null ? value.toFixed(config.decimals) : "\u2014"}
                 </span>
                 {config.unit && (
                   <span className="text-xs text-muted-foreground mb-1">{config.unit}</span>
