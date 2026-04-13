@@ -23,6 +23,7 @@ import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { StrokesGained } from "@/components/strokes-gained";
 import { ClubRadarChart } from "@/components/club-radar-chart";
 import { ExportReport } from "@/components/export-report";
+import { SessionCoach } from "@/components/session-coach";
 import {
   parseCsvText,
   computeSessionSummaries,
@@ -407,6 +408,8 @@ export default function Dashboard() {
         )}
 
         <MetricCards summaries={summaries} selectedMetrics={PRIMARY_METRICS} bestSessions={bestSessions} />
+
+        <SessionCoach summaries={summaries} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <StrokesGained summaries={summaries} />
